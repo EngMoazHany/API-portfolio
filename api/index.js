@@ -9,11 +9,18 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+const vercelUrl = process.env.VERCEL_URL
+  ? `https://${process.env.VERCEL_URL}`
+  : null;
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
   "https://moaz-portfolio-lake.vercel.app",
+  "https://api-portfolio-eta.vercel.app",
   process.env.FRONTEND_URL,
+  process.env.PUBLIC_API_URL,
+  vercelUrl,
 ].filter(Boolean);
 
 app.use(express.json({ limit: "1mb" }));
@@ -25,6 +32,7 @@ app.use(
         return callback(null, true);
       }
 
+      console.warn("Blocked by CORS:", origin);
       return callback(new Error("Not allowed by CORS"));
     },
   })
@@ -682,6 +690,19 @@ app.post("/api/chat", async (req, res) => {
       error: "Sorry, the chat service is currently unavailable. Please try again later.",
     });
   }
+});
+
+app.use((err, req, res, next) => {
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      error: "CORS origin not allowed",
+    });
+  }
+
+  console.error("Unhandled server error:", err);
+  return res.status(500).json({
+    error: "Internal server error",
+  });
 });
 
 export default app;
