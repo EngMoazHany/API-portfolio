@@ -40,7 +40,8 @@ const swaggerSpec = {
   },
   servers: [
     {
-      url: process.env.PUBLIC_API_URL || "http://localhost:5000",
+      url: "/",
+      description: "Current API host",
     },
   ],
   paths: {
