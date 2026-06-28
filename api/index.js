@@ -2,7 +2,6 @@ import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import swaggerJSDoc from "swagger-jsdoc";
-import swaggerUi from "swagger-ui-express";
 import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
@@ -43,14 +42,40 @@ const swaggerSpec = swaggerJSDoc({
     },
     servers: [
       {
-        url: process.env.PUBLIC_API_URL || `http://localhost:${PORT}`,
+        url: process.env.PUBLIC_API_URL || "http://localhost:5000",
       },
     ],
   },
   apis: ["./api/index.js"],
 });
 
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+const swaggerHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <title>Moaz Portfolio Chat API Docs</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist/swagger-ui.css" />
+</head>
+<body>
+  <div id="swagger-ui"></div>
+  <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
+  <script>
+    window.onload = () => {
+      window.ui = SwaggerUIBundle({
+        url: "/api-docs.json",
+        dom_id: "#swagger-ui"
+      });
+    };
+  </script>
+</body>
+</html>`;
+
+app.get("/api-docs.json", (req, res) => {
+  res.json(swaggerSpec);
+});
+
+app.get(["/api-docs", "/api-docs/"], (req, res) => {
+  res.type("html").send(swaggerHtml);
+});
 
 const SYSTEM_PROMPT = `
 You are the official smart portfolio assistant for Moaz Hany El Mahdy.
