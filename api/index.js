@@ -1,7 +1,6 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import swaggerJSDoc from "swagger-jsdoc";
 import { GoogleGenAI } from "@google/genai";
 
 dotenv.config();
@@ -31,23 +30,123 @@ app.use(
   })
 );
 
-const swaggerSpec = swaggerJSDoc({
-  definition: {
-    openapi: "3.0.0",
-    info: {
-      title: "Moaz Portfolio Chat API",
-      version: "1.0.0",
-      description:
-        "Gemini-powered bilingual chatbot API for Moaz Hany El Mahdy portfolio",
-    },
-    servers: [
-      {
-        url: process.env.PUBLIC_API_URL || "http://localhost:5000",
-      },
-    ],
+const swaggerSpec = {
+  openapi: "3.0.0",
+  info: {
+    title: "Moaz Portfolio Chat API",
+    version: "1.0.0",
+    description:
+      "Gemini-powered bilingual chatbot API for Moaz Hany El Mahdy portfolio",
   },
-  apis: ["./api/index.js"],
-});
+  servers: [
+    {
+      url: process.env.PUBLIC_API_URL || "http://localhost:5000",
+    },
+  ],
+  paths: {
+    "/": {
+      get: {
+        summary: "API root",
+        description: "Returns a running message and available endpoints.",
+        responses: {
+          200: {
+            description: "API is running",
+          },
+        },
+      },
+    },
+    "/api/health": {
+      get: {
+        summary: "Health check",
+        description: "Checks if the API is running.",
+        responses: {
+          200: {
+            description: "API health status",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    status: {
+                      type: "string",
+                      example: "ok",
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/api/chat": {
+      post: {
+        summary: "Send a message to Moaz portfolio chatbot",
+        description:
+          "Sends a user message to the Gemini-powered portfolio chatbot.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  message: {
+                    type: "string",
+                    example: "Tell me about FINEXA",
+                  },
+                  messages: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        role: {
+                          type: "string",
+                          example: "user",
+                        },
+                        content: {
+                          type: "string",
+                          example: "Who is Moaz?",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          200: {
+            description: "Chatbot reply",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    reply: {
+                      type: "string",
+                      example: "FINEXA is Moaz's graduation project...",
+                    },
+                  },
+                },
+              },
+            },
+          },
+          400: {
+            description: "Missing message",
+          },
+          500: {
+            description: "Server or Gemini error",
+          },
+          502: {
+            description: "Gemini returned no response",
+          },
+        },
+      },
+    },
+  },
+};
 
 const swaggerHtml = `<!DOCTYPE html>
 <html>
