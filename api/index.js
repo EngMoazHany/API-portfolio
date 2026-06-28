@@ -484,24 +484,6 @@ Answer:
 "Moaz is a strong fit for AI/ML and backend-integrated AI roles because he can move beyond notebooks and build practical AI services. FINEXA shows his experience with forecasting, FastAPI microservices, REST APIs, and ASP.NET Core integration, while his React and software engineering background helps him understand full product workflows."
 `;
 
-function normalizeMessages(messages = []) {
-  if (!Array.isArray(messages)) return [];
-
-  return messages
-    .filter((item) => {
-      return (
-        item &&
-        ["user", "assistant", "model"].includes(item.role) &&
-        typeof item.content === "string" &&
-        item.content.trim()
-      );
-    })
-    .map((item) => ({
-      role: item.role === "assistant" ? "model" : item.role,
-      parts: [{ text: item.content.trim() }],
-    }));
-}
-
 function getLatestMessage(message, messages) {
   if (typeof message === "string" && message.trim()) {
     return message.trim();
@@ -523,25 +505,26 @@ function getLatestMessage(message, messages) {
   return "";
 }
 
-function buildGeminiContents(message, messages) {
-  const latestMessage = getLatestMessage(message, messages);
-  const history = normalizeMessages(messages);
-
-  if (!history.length) {
-    return [{ role: "user", parts: [{ text: latestMessage }] }];
+function buildConversationText(message, messages) {
+  if (Array.isArray(messages) && messages.length) {
+    return messages
+      .filter((item) => {
+        return (
+          item &&
+          ["user", "assistant"].includes(item.role) &&
+          typeof item.content === "string" &&
+          item.content.trim()
+        );
+      })
+      .slice(-8)
+      .map((item) => {
+        const role = item.role === "user" ? "User" : "Assistant";
+        return `${role}: ${item.content.trim()}`;
+      })
+      .join("\n");
   }
 
-  const lastHistoryText =
-    history[history.length - 1]?.parts?.[0]?.text?.trim() || "";
-
-  if (latestMessage && lastHistoryText !== latestMessage) {
-    history.push({
-      role: "user",
-      parts: [{ text: latestMessage }],
-    });
-  }
-
-  return history.slice(-12);
+  return `User: ${message}`;
 }
 
 /**
@@ -679,14 +662,31 @@ app.post("/api/chat", async (req, res) => {
       apiKey: process.env.GEMINI_API_KEY,
     });
 
-    const contents = buildGeminiContents(message, messages);
+    const conversationText = buildConversationText(latestMessage, messages);
 
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `
+Recent conversation:
+${conversationText}
+
+Latest user message:
+${latestMessage}
+
+Answer the latest user message according to the system instructions.
+`.trim(),
+            },
+          ],
+        },
+      ],
       config: {
         systemInstruction: SYSTEM_PROMPT,
-        temperature: 0.55,
+        temperature: 0.45,
         topP: 0.9,
       },
     });
@@ -701,7 +701,11 @@ app.post("/api/chat", async (req, res) => {
 
     return res.json({ reply });
   } catch (error) {
-    console.error("Gemini chat error:", error);
+    console.error("Gemini chat error details:", {
+      message: error?.message,
+      status: error?.status,
+      stack: error?.stack,
+    });
 
     return res.status(500).json({
       error: "Sorry, the chat service is currently unavailable. Please try again later.",
